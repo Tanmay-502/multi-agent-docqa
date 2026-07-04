@@ -21,5 +21,5 @@ A multi-agent AI system that reads documents and generates questions from them.
 - [x] Day 3 — LangGraph core
 - [x] Day 4 — Individual agents
 - [x] Day 5 — FastAPI integration
-- [ ] Day 6 — Streamlit frontend + deployment
+- [x] Day 6 — Streamlit frontend + deployment
 - [ ] Day 7 — Polish and documentation
