@@ -6,6 +6,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
+from graph.orchestrator import agent_graph
 
 load_dotenv()
 
@@ -55,20 +56,12 @@ if uploaded_file is not None:
             relevant_docs = retriever.invoke(user_question)
             context = "\n\n".join([doc.page_content for doc in relevant_docs])
 
-            llm = ChatGroq(
-                model="llama-3.1-8b-instant",
-                api_key=os.getenv("GROQ_API_KEY")
-            )
-
-            prompt = f"""Answer the question based on the context below.
-
-Context:
-{context}
-
-Question: {user_question}
-
-Answer:"""
-
-            response = llm.invoke(prompt)
+            result = agent_graph.invoke({
+                "user_question": user_question,
+                "agent_type": "",
+                "context": context,
+                "answer": None
+            })
             st.write("### Answer:")
-            st.write(response.content)
+            st.write(result["answer"])
+            st.caption(f"Agent used: {result['agent_type']}")
