@@ -1,10 +1,7 @@
 import streamlit as st
-from dotenv import load_dotenv
-import os
-from agents.doc_reader_agent import process_document
-from graph.orchestrator import agent_graph
+import requests
 
-load_dotenv()
+API_URL = "http://localhost:8000"
 
 st.set_page_config(page_title="DocQA Chatbot", page_icon="📄")
 st.title("📄 Multi-Agent Document Q&A")
@@ -13,55 +10,50 @@ st.write("Upload a PDF and ask questions about it.")
 uploaded_file = st.file_uploader("Upload your PDF", type="pdf")
 
 if uploaded_file is not None:
-    st.success("PDF uploaded successfully!")
-
-    # Process document using doc_reader_agent
     with st.spinner("Processing document..."):
-        vector_store, num_chunks, num_chars = process_document(uploaded_file)
+        response = requests.post(
+            f"{API_URL}/upload",
+            files={"file": (uploaded_file.name, uploaded_file, "application/pdf")}
+        )
+        data = response.json()
 
-    st.write(f"✅ Total characters: {num_chars}")
-    st.write(f"✅ Split into {num_chunks} chunks")
-    st.success("✅ Document processed and ready!")
+    if "error" in data:
+        st.error(data["error"])
+    else:
+        st.success("PDF uploaded successfully!")
+        st.write(f"✅ Total characters: {data['num_chars']}")
+        st.write(f"✅ Split into {data['num_chunks']} chunks")
+        st.success("✅ Document processed and ready!")
 
-    # ── Chat interface ──
-    st.subheader("💬 Ask questions about your document")
-    user_question = st.text_input("Type your question here:")
+        st.subheader("💬 Ask questions about your document")
+        user_question = st.text_input("Type your question here:")
 
-    if user_question:
-        with st.spinner("Finding answer..."):
-            retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-            relevant_docs = retriever.invoke(user_question)
-            context = "\n\n".join([doc.page_content for doc in relevant_docs])
+        if user_question:
+            with st.spinner("Finding answer..."):
+                response = requests.post(
+                    f"{API_URL}/ask",
+                    json={
+                        "question": user_question,
+                        "session_id": "default",
+                        "generate_questions": False
+                    }
+                )
+                result = response.json()
+                st.write("### Answer:")
+                st.write(result["answer"])
+                st.caption(f"Agent used: {result['agent_used']}")
 
-            result = agent_graph.invoke({
-                "user_question": user_question,
-                "agent_type": "",
-                "context": context,
-                "answer": None,
-                "generate_questions": False
-            })
-            st.write("### Answer:")
-            st.write(result["answer"])
-            st.caption(f"Agent used: {result['agent_type']}")
+        st.divider()
+        st.subheader("🎯 Generate Exam Questions")
+        st.write("Click below to auto-generate exam questions from your document.")
 
-    # ── Generate Questions ──
-    st.divider()
-    st.subheader("🎯 Generate Exam Questions")
-    st.write("Click below to auto-generate exam questions from your document.")
-
-    if st.button("Generate Questions"):
-        with st.spinner("Generating questions..."):
-            retriever = vector_store.as_retriever(search_kwargs={"k": 5})
-            relevant_docs = retriever.invoke("main topics and key concepts")
-            context = "\n\n".join([doc.page_content for doc in relevant_docs])
-
-            result = agent_graph.invoke({
-                "user_question": "Generate exam questions from this document",
-                "agent_type": "",
-                "context": context,
-                "answer": None,
-                "generate_questions": True
-            })
-            st.write("### Generated Questions:")
-            st.write(result["answer"])
-            st.caption("Agent used: question_gen")
+        if st.button("Generate Questions"):
+            with st.spinner("Generating questions..."):
+                response = requests.post(
+                    f"{API_URL}/generate-questions",
+                    params={"session_id": "default"}
+                )
+                result = response.json()
+                st.write("### Generated Questions:")
+                st.write(result["questions"])
+                st.caption("Agent used: question_gen")
