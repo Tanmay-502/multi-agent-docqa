@@ -1,6 +1,9 @@
 from typing import TypedDict, Optional
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
+from agents.basic_agent import basic_chat
+from agents.doc_reader_agent import answer_from_document
+from agents.question_gen_agent import generate_questions
 from dotenv import load_dotenv
 import os
 
@@ -14,27 +17,27 @@ class AgentState(TypedDict):
     agent_type: str
     context: Optional[str]
     answer: Optional[str]
+    generate_questions: Optional[bool]
 
 # ============================================
-# 2. INITIALIZE THE LLM
+# 2. ROUTER NODE
 # ============================================
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
     api_key=os.getenv("GROQ_API_KEY")
 )
 
-# ============================================
-# 3. DEFINE THE NODES (agents)
-# ============================================
-
-# Node 1 — Router: decides which agent runs
 def router_node(state: AgentState) -> AgentState:
     question = state["user_question"]
+    generate_q = state.get("generate_questions", False)
+    
+    if generate_q:
+        return {"agent_type": "question_gen"}
     
     prompt = f"""You are a router. Based on the question below, decide which agent should handle it.
-    
-If the question is about a document, PDF, or file → reply with exactly: document
-If it's a general question or casual chat → reply with exactly: chat
+
+If the question is about a document, PDF, or file content → reply: document
+If it's a general question or casual chat → reply: chat
 
 Question: {question}
 
@@ -48,31 +51,24 @@ Reply with only one word (document or chat):"""
     
     return {"agent_type": agent_type}
 
-# Node 2 — Basic Chat Agent
+# ============================================
+# 3. AGENT NODES
+# ============================================
 def basic_chat_node(state: AgentState) -> AgentState:
-    question = state["user_question"]
-    
-    response = llm.invoke(question)
-    
-    return {"answer": response.content}
+    answer = basic_chat(state["user_question"])
+    return {"answer": answer}
 
-# Node 3 — Document Agent
 def document_agent_node(state: AgentState) -> AgentState:
-    question = state["user_question"]
+    answer = answer_from_document(
+        state["user_question"],
+        state.get("context", "No document provided.")
+    )
+    return {"answer": answer}
+
+def question_gen_node(state: AgentState) -> AgentState:
     context = state.get("context", "No document provided.")
-    
-    prompt = f"""Answer the question based on the context below.
-
-Context:
-{context}
-
-Question: {question}
-
-Answer:"""
-    
-    response = llm.invoke(prompt)
-    
-    return {"answer": response.content}
+    questions = generate_questions(context)
+    return {"answer": questions}
 
 # ============================================
 # 4. ROUTING FUNCTION
@@ -86,29 +82,27 @@ def route_decision(state: AgentState) -> str:
 def build_graph():
     graph = StateGraph(AgentState)
     
-    # Add nodes
     graph.add_node("router", router_node)
     graph.add_node("basic_chat", basic_chat_node)
     graph.add_node("document_agent", document_agent_node)
+    graph.add_node("question_gen", question_gen_node)
     
-    # Set entry point
     graph.set_entry_point("router")
     
-    # Add conditional edges from router
     graph.add_conditional_edges(
         "router",
         route_decision,
         {
             "chat": "basic_chat",
-            "document": "document_agent"
+            "document": "document_agent",
+            "question_gen": "question_gen"
         }
     )
     
-    # Both agents lead to END
     graph.add_edge("basic_chat", END)
     graph.add_edge("document_agent", END)
+    graph.add_edge("question_gen", END)
     
     return graph.compile()
 
-# Create the graph instance
 agent_graph = build_graph()

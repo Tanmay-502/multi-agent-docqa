@@ -19,7 +19,7 @@ A multi-agent AI system that reads documents and generates questions from them.
 - [x] Day 1 — Environment setup, LLM connection working
 - [x] Day 2 — PDF chatbot baseline
 - [x] Day 3 — LangGraph core
-- [ ] Day 4 — Individual agents
+- [x] Day 4 — Individual agents
 - [ ] Day 5 — FastAPI integration
 - [ ] Day 6 — Streamlit frontend + deployment
 - [ ] Day 7 — Polish and documentation

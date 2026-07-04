@@ -1,11 +1,7 @@
 import streamlit as st
 from dotenv import load_dotenv
 import os
-from pypdf import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain_groq import ChatGroq
+from agents.doc_reader_agent import process_document
 from graph.orchestrator import agent_graph
 
 load_dotenv()
@@ -19,34 +15,15 @@ uploaded_file = st.file_uploader("Upload your PDF", type="pdf")
 if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
 
-    # Extract text from PDF
-    pdf_reader = PdfReader(uploaded_file)
-    raw_text = ""
-    for page in pdf_reader.pages:
-        raw_text += page.extract_text()
-
-    st.write(f"✅ Extracted {len(pdf_reader.pages)} pages")
-    st.write(f"✅ Total characters: {len(raw_text)}")
-
-    # Split into chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200
-    )
-    chunks = text_splitter.split_text(raw_text)
-    st.write(f"✅ Split into {len(chunks)} chunks")
-
-    # Create embeddings and store in FAISS
+    # Process document using doc_reader_agent
     with st.spinner("Processing document..."):
-        embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True}
-        )
-        vector_store = FAISS.from_texts(chunks, embeddings)
+        vector_store, num_chunks, num_chars = process_document(uploaded_file)
+
+    st.write(f"✅ Total characters: {num_chars}")
+    st.write(f"✅ Split into {num_chunks} chunks")
     st.success("✅ Document processed and ready!")
 
-    # Chat interface
+    # ── Chat interface ──
     st.subheader("💬 Ask questions about your document")
     user_question = st.text_input("Type your question here:")
 
@@ -60,8 +37,31 @@ if uploaded_file is not None:
                 "user_question": user_question,
                 "agent_type": "",
                 "context": context,
-                "answer": None
+                "answer": None,
+                "generate_questions": False
             })
             st.write("### Answer:")
             st.write(result["answer"])
             st.caption(f"Agent used: {result['agent_type']}")
+
+    # ── Generate Questions ──
+    st.divider()
+    st.subheader("🎯 Generate Exam Questions")
+    st.write("Click below to auto-generate exam questions from your document.")
+
+    if st.button("Generate Questions"):
+        with st.spinner("Generating questions..."):
+            retriever = vector_store.as_retriever(search_kwargs={"k": 5})
+            relevant_docs = retriever.invoke("main topics and key concepts")
+            context = "\n\n".join([doc.page_content for doc in relevant_docs])
+
+            result = agent_graph.invoke({
+                "user_question": "Generate exam questions from this document",
+                "agent_type": "",
+                "context": context,
+                "answer": None,
+                "generate_questions": True
+            })
+            st.write("### Generated Questions:")
+            st.write(result["answer"])
+            st.caption("Agent used: question_gen")
