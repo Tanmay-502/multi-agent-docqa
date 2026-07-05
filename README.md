@@ -1,3 +1,9 @@
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green)
+![LangGraph](https://img.shields.io/badge/LangGraph-Latest-orange)
+![Streamlit](https://img.shields.io/badge/Streamlit-Deployed-red)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
 # 🤖 Multi-Agent Document Q&A System
 
 A production-ready multi-agent AI system that reads documents and generates 
