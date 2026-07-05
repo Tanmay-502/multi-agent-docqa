@@ -41,5 +41,5 @@ Context:
 
 Generate {num_questions} exam questions:"""
     
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     return response.content

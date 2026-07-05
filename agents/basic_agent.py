@@ -9,10 +9,11 @@ import os
 load_dotenv()
 
 # Initialize the LLM — using Groq's free LLaMA 3.1 model
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key=os.getenv("GROQ_API_KEY")
-)
+def get_llm():
+    return ChatGroq(
+        model="llama-3.1-8b-instant",
+        api_key=os.getenv("GROQ_API_KEY")
+    )
 
 def basic_chat(question: str) -> str:
     """
@@ -33,5 +34,5 @@ Question: {question}
 Answer:"""
     
     # Send to LLM and return the response text
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     return response.content

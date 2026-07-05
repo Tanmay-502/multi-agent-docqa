@@ -64,7 +64,7 @@ Question: {question}
 
 Reply with only one word (document or chat):"""
     
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     agent_type = response.content.strip().lower()
     
     # Default to chat if unexpected response
