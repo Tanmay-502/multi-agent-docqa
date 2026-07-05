@@ -6,6 +6,14 @@ from graph.orchestrator import agent_graph
 
 load_dotenv()
 
+# Load from Streamlit secrets if available
+try:
+    import streamlit as st
+    if "GROQ_API_KEY" in st.secrets:
+        os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+except:
+    pass
+
 st.set_page_config(page_title="DocQA Chatbot", page_icon="📄")
 st.title("📄 Multi-Agent Document Q&A")
 st.write("Upload a PDF and ask questions about it.")
