@@ -18,18 +18,17 @@ intelligent answers and exam questions using LangGraph orchestration.
 3. Auto-generate exam questions from the document
 
 ## 🏗️ Architecture
-User
-↓
-Streamlit UI (frontend)
-↓ HTTP requests
-FastAPI Backend (api/main.py)
-↓
-LangGraph Orchestrator (graph/orchestrator.py)
-↓           ↓              ↓
-Basic       Doc Reader    Question
-Agent       Agent         Generator
-↓           ↓              ↓
-Groq LLaMA 3.1
+
+**Request Flow:**
+
+**User** → **Streamlit UI** → **FastAPI Backend** → **LangGraph Orchestrator**
+
+**LangGraph routes to:**
+- 🗣️ Basic Chat Agent → general questions
+- 📄 Document Reader Agent → PDF questions  
+- 🎯 Question Generator Agent → exam questions
+
+**All agents use:** Groq LLaMA 3.1
 
 ## 🛠️ Tech Stack
 
